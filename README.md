@@ -243,6 +243,113 @@ This approach ensures:
 
 ---
 
+## Ledger Schema & Invariants
+
+This system is built around a **ledger-first data model**. Financial state is never mutated directly; instead, it is *derived* from immutable ledger entries.
+
+---
+
+### Core Tables
+
+#### accounts
+
+Represents logical financial accounts (wallets, settlement accounts, system accounts).
+
+| Column       | Type      | Description                            |
+| ------------ | --------- | -------------------------------------- |
+| id           | UUID      | Primary identifier                     |
+| owner_id     | UUID      | Logical owner (user, system, merchant) |
+| account_type | ENUM      | wallet, system, settlement             |
+| currency     | CHAR(3)   | ISO currency code                      |
+| status       | ENUM      | active, suspended                      |
+| created_at   | TIMESTAMP | Creation time                          |
+
+---
+
+#### ledger_entries
+
+Immutable source of truth for all financial movements.
+
+| Column            | Type      | Description                    |
+| ----------------- | --------- | ------------------------------ |
+| id                | UUID      | Primary identifier             |
+| debit_account_id  | UUID      | Account being debited          |
+| credit_account_id | UUID      | Account being credited         |
+| amount            | DECIMAL   | Positive monetary amount       |
+| currency          | CHAR(3)   | Currency of the transaction    |
+| reference         | TEXT      | External or internal reference |
+| idempotency_key   | TEXT      | Ensures safe retries           |
+| entry_type        | ENUM      | transfer, reversal, adjustment |
+| created_at        | TIMESTAMP | Entry creation time            |
+
+Rules:
+
+* Amounts are always **positive**
+* One debit, one credit per entry
+* Entries are **append-only**
+
+---
+
+#### balances (derived)
+
+Balances are **not** the source of truth. They are derived for performance and queried consistency.
+
+| Column     | Type      | Description             |
+| ---------- | --------- | ----------------------- |
+| account_id | UUID      | Account reference       |
+| balance    | DECIMAL   | Current derived balance |
+| updated_at | TIMESTAMP | Last update time        |
+
+Balances can be:
+
+* Calculated on demand from ledger entries, or
+* Maintained via transactional updates for performance
+
+---
+
+### Invariants (Non-Negotiable Rules)
+
+These invariants are enforced in code and, where possible, at the database level.
+
+1. **No floating-point arithmetic**
+
+   * All monetary values use DECIMAL
+
+2. **Ledger entries are immutable**
+
+   * Corrections are done via reversal entries
+
+3. **Double-entry integrity**
+
+   * Total debits == total credits (per currency)
+
+4. **Idempotency is mandatory**
+
+   * Duplicate requests must not create duplicate entries
+
+5. **Balances never go negative (unless explicitly allowed)**
+
+   * Overdraft behaviour must be explicit
+
+6. **Every financial change has a reference**
+
+   * Human and machine traceability
+
+---
+
+### Why This Matters
+
+This model:
+
+* Makes audits trivial
+* Simplifies debugging
+* Prevents silent data corruption
+* Mirrors real-world financial systems
+
+Most fintech failures stem from violating one of these rules.
+
+---
+
 ## Technology Stack
 
 * **Language:** Python 3.x
