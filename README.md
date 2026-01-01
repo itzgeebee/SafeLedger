@@ -74,14 +74,157 @@ This repository is intended as an educational and reference implementation of re
 
 ## Architecture Overview
 
-High-level components:
+This system follows a **modular monolith** architecture — deliberately avoiding premature microservices while still enforcing clear boundaries between concerns.
 
-* **API Layer** — FastAPI endpoints with explicit contracts
-* **Domain Layer** — Ledger, wallets, and business rules
-* **Persistence Layer** — PostgreSQL with transactional guarantees
-* **Async Workers** — Background processing for retries and reconciliation
+The goal is to make **financial state transitions explicit, auditable, and easy to reason about**.
 
-The system is designed to be deployed in a **cloud-native environment** (e.g. AWS), but avoids unnecessary complexity.
+### High-Level Architecture
+
+```
+┌────────────────────┐
+│      Clients       │
+│  (Web / API / Jobs)│
+└─────────┬──────────┘
+          │
+          ▼
+┌────────────────────┐
+│    API Layer       │
+│  FastAPI Routes    │
+│  Validation        │
+│  Idempotency       │
+└─────────┬──────────┘
+          │
+          ▼
+┌────────────────────┐
+│   Domain Layer     │
+│  Ledger Logic      │
+│  Wallet Rules      │
+│  Invariants        │
+└─────────┬──────────┘
+          │
+          ▼
+┌────────────────────┐
+│ Persistence Layer  │
+│  PostgreSQL        │
+│  Transactions      │
+│  Constraints       │
+└─────────┬──────────┘
+          │
+          ▼
+┌────────────────────┐
+│ Async Workers      │
+│  Retries           │
+│  Reconciliation    │
+│  Webhook Handling  │
+└────────────────────┘
+```
+
+---
+
+### Layer Responsibilities
+
+#### API Layer
+
+Responsibilities:
+
+* Input validation and request shaping
+* Idempotency key enforcement
+* Explicit request boundaries
+* No business logic
+
+Why this matters:
+
+* Prevents accidental double-processing
+* Makes retries safe
+* Keeps edge cases at the boundary
+
+---
+
+#### Domain Layer (Core of the System)
+
+This is the **most important layer**.
+
+Responsibilities:
+
+* Ledger entry creation
+* Balance invariants
+* Reversals and adjustments
+* Business rule enforcement
+
+Rules:
+
+* No HTTP knowledge
+* No database session leaks
+* No side effects without ledger entries
+
+This ensures the system can be reasoned about *without* infrastructure context.
+
+---
+
+#### Persistence Layer
+
+Responsibilities:
+
+* Atomic transactions
+* Enforcing constraints at the database level
+* Preventing partial writes
+
+Key design choices:
+
+* Ledger entries are immutable
+* Balances are derived
+* Foreign keys and constraints are not optional
+
+---
+
+#### Async Workers
+
+Responsibilities:
+
+* Processing retries
+* Handling delayed or duplicate events
+* Reconciliation jobs
+
+Why async is isolated:
+
+* Prevents request-time failures from corrupting state
+* Makes external dependencies non-blocking
+* Improves system resilience
+
+---
+
+### Money Flow (Text Diagram)
+
+```
+Client Request
+   │
+   ▼
+API validates + checks idempotency
+   │
+   ▼
+Domain validates business rules
+   │
+   ▼
+Ledger entries written (transaction)
+   │
+   ▼
+Balances derived
+   │
+   ▼
+Async jobs triggered (if needed)
+```
+
+---
+
+### Why Not Microservices?
+
+This project intentionally avoids microservices because:
+
+* Financial correctness benefits from strong transactional guarantees
+* Cross-service consistency is expensive and error-prone
+* Clarity beats scale in early and mid-stage fintech systems
+
+Scaling decisions should follow **real load**, not architecture trends.
 
 ---
 
@@ -122,8 +265,8 @@ This approach ensures:
 
 ```bash
 # Clone the repository
-git clone https://github.com/itzgeebee/SafeLedger.git
-cd SafeLedger
+git clone https://github.com/itzgeebee/safeLedger.git
+cd your-repo-name
 
 # Create virtual environment
 python -m venv venv
