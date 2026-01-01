@@ -350,6 +350,241 @@ Most fintech failures stem from violating one of these rules.
 
 ---
 
+## Idempotency & Failure Modes
+
+Financial systems must assume that **everything can and will fail** — networks, clients, third-party providers, and even internal services.
+
+This section documents how the system handles **duplicate requests, retries, and partial failures** without corrupting financial state.
+
+---
+
+### Idempotency Strategy
+
+All state-changing operations **must** be idempotent.
+
+#### How It Works
+
+* Clients provide an `Idempotency-Key` header
+* The key is stored alongside the resulting ledger entry
+* Repeated requests with the same key:
+
+  * Return the original response
+  * Do **not** create new ledger entries
+
+```
+Client → POST /transfers (Idempotency-Key: abc123)
+   │
+   ├─ First request → Ledger entry created
+   │
+   └─ Retry request → Existing entry returned
+```
+
+Why this matters:
+
+* Network retries are normal
+* Payment providers resend webhooks
+* Users double-click buttons
+
+Without idempotency, money gets duplicated.
+
+---
+
+### Duplicate Webhooks
+
+External providers may send the **same webhook multiple times**.
+
+Handling approach:
+
+* Webhook payloads include a provider reference
+* The reference is treated as an idempotency key
+* Duplicate events are safely ignored
+
+```
+Webhook received
+   │
+   ├─ New reference → Process event
+   │
+   └─ Seen reference → No-op
+```
+
+This guarantees:
+
+* At-most-once financial effects
+* Safe webhook retries
+
+---
+
+### Partial Failures
+
+A partial failure occurs when:
+
+* A ledger entry is written
+* A downstream operation fails (e.g. notification, callback)
+
+Design rule:
+
+> **If the ledger commit succeeds, the financial operation is considered successful.**
+
+Downstream effects are retried asynchronously.
+
+```
+Ledger write (SUCCESS)
+   │
+   ├─ Notify user (FAIL)
+   └─ Retry via background job
+```
+
+This prevents:
+
+* Double-charging
+* Manual state reconciliation
+
+---
+
+### Retry Safety
+
+Retries are handled at two levels:
+
+1. **API-level retries**
+
+   * Protected by idempotency keys
+
+2. **Worker-level retries**
+
+   * Tasks are retry-safe
+   * Side effects are isolated
+
+Rules:
+
+* Retries must never create new ledger entries
+* Side effects must be replayable or discardable
+
+---
+
+### Failure as a First-Class Concept
+
+This system assumes:
+
+* Requests will timeout
+* Dependencies will fail
+* Messages will be duplicated
+
+Designing for these realities is what separates **financial systems** from standard CRUD applications.
+
+---
+
+## Example Transaction Flows
+
+This section walks through **concrete financial flows** and shows the **exact ledger entries** created for each operation.
+
+The goal is to make state transitions explicit and auditable.
+
+---
+
+### 1. Peer-to-Peer (P2P) Transfer
+
+**Scenario:** User A sends ₦10,000 to User B.
+
+**Accounts:**
+
+* `A_wallet`
+* `B_wallet`
+
+**Ledger Entry:**
+
+| Debit Account | Credit Account | Amount   | Type     | Reference  |
+| ------------- | -------------- | -------- | -------- | ---------- |
+| A_wallet      | B_wallet       | 10000.00 | transfer | p2p_tx_001 |
+
+Rules enforced:
+
+* Single debit, single credit
+* Atomic transaction
+* Idempotency key tied to `p2p_tx_001`
+
+Result:
+
+* A_wallet balance decreases by ₦10,000
+* B_wallet balance increases by ₦10,000
+
+---
+
+### 2. Transfer Reversal
+
+**Scenario:** A P2P transfer must be reversed due to user error or dispute.
+
+**Important rule:**
+
+> Ledger entries are never modified or deleted.
+
+**New Ledger Entry (Reversal):**
+
+| Debit Account | Credit Account | Amount   | Type     | Reference      |
+| ------------- | -------------- | -------- | -------- | -------------- |
+| B_wallet      | A_wallet       | 10000.00 | reversal | p2p_tx_001_rev |
+
+Notes:
+
+* Reversal references the original transaction
+* Financial history remains intact
+* Audit trail is preserved
+
+---
+
+### 3. Failed External Payment (Partial Failure)
+
+**Scenario:** User attempts to pay a merchant. Ledger write succeeds, but external provider callback fails.
+
+**Accounts:**
+
+* `User_wallet`
+* `Merchant_settlement`
+
+**Ledger Entry (Successful):**
+
+| Debit Account | Credit Account      | Amount  | Type    | Reference  |
+| ------------- | ------------------- | ------- | ------- | ---------- |
+| User_wallet   | Merchant_settlement | 5000.00 | payment | pay_tx_009 |
+
+**Downstream Failure:**
+
+* Provider webhook times out
+* Notification not sent
+
+**System Behaviour:**
+
+* Ledger entry is final
+* Async retry handles notification
+* No duplicate charges possible
+
+---
+
+### 4. Duplicate Request (Idempotent Retry)
+
+**Scenario:** Client retries a transfer request due to timeout.
+
+**Input:**
+
+* Same payload
+* Same Idempotency-Key
+
+**Outcome:**
+
+* No new ledger entry created
+* Original transaction returned
+
+```
+Request 1 → Ledger entry created
+Request 2 → Existing entry returned
+```
+
+This guarantees:
+
+* At-most-once financial effects
+* Safe retries under poor network conditions
+
+---
+
 ## Technology Stack
 
 * **Language:** Python 3.x
