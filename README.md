@@ -585,6 +585,209 @@ This guarantees:
 
 ---
 
+## Security & Threat Model
+
+Financial systems must assume **active abuse**, not just accidental misuse. This section outlines the primary threat vectors and how the system defends against them.
+
+---
+
+### Authentication
+
+* All requests require authenticated identities
+* Authentication is handled at the API boundary
+* Service-to-service calls use scoped credentials
+
+The domain layer never trusts unauthenticated input.
+
+---
+
+### Authorization (AuthZ)
+
+Authorization is **account-centric**, not endpoint-centric.
+
+Rules:
+
+* A user can only operate on accounts they own or are explicitly permitted to access
+* System and settlement accounts are protected by elevated privileges
+* Authorization checks occur **before** ledger entry creation
+
+This prevents:
+
+* Horizontal privilege escalation
+* Unauthorized balance manipulation
+
+---
+
+### Double-Spend Prevention
+
+The system prevents double-spending through:
+
+1. **Transactional ledger writes**
+
+   * Debit and credit occur atomically
+
+2. **Balance checks within the transaction**
+
+   * Funds availability verified before commit
+
+3. **Idempotency enforcement**
+
+   * Duplicate requests cannot create duplicate debits
+
+If any condition fails, the transaction is aborted.
+
+---
+
+### Abuse & Fraud Mitigation
+
+While not a full fraud engine, the system includes basic safeguards:
+
+* Rate limiting on sensitive endpoints
+* Velocity checks (configurable)
+* Explicit limits per account type
+
+These controls are intentionally simple and transparent.
+
+---
+
+### Replay Attacks
+
+Replay attacks are mitigated via:
+
+* Idempotency keys
+* Provider references for webhooks
+* Time-bound request validity
+
+Old or duplicated requests result in no-ops.
+
+---
+
+### Least Privilege Principle
+
+* Database roles are scoped
+* Background workers have limited permissions
+* Secrets are isolated per environment
+
+Compromise of one component does not imply full system compromise.
+
+---
+
+### Security as a Design Constraint
+
+Security decisions are embedded into:
+
+* Data model design
+* Transaction boundaries
+* Failure handling
+
+In financial systems, **security is correctness**.
+
+---
+
+### 1. Peer-to-Peer (P2P) Transfer
+
+**Scenario:** User A sends ₦10,000 to User B.
+
+**Accounts:**
+
+* `A_wallet`
+* `B_wallet`
+
+**Ledger Entry:**
+
+| Debit Account | Credit Account | Amount   | Type     | Reference  |
+| ------------- | -------------- | -------- | -------- | ---------- |
+| A_wallet      | B_wallet       | 10000.00 | transfer | p2p_tx_001 |
+
+Rules enforced:
+
+* Single debit, single credit
+* Atomic transaction
+* Idempotency key tied to `p2p_tx_001`
+
+Result:
+
+* A_wallet balance decreases by ₦10,000
+* B_wallet balance increases by ₦10,000
+
+---
+
+### 2. Transfer Reversal
+
+**Scenario:** A P2P transfer must be reversed due to user error or dispute.
+
+**Important rule:**
+
+> Ledger entries are never modified or deleted.
+
+**New Ledger Entry (Reversal):**
+
+| Debit Account | Credit Account | Amount   | Type     | Reference      |
+| ------------- | -------------- | -------- | -------- | -------------- |
+| B_wallet      | A_wallet       | 10000.00 | reversal | p2p_tx_001_rev |
+
+Notes:
+
+* Reversal references the original transaction
+* Financial history remains intact
+* Audit trail is preserved
+
+---
+
+### 3. Failed External Payment (Partial Failure)
+
+**Scenario:** User attempts to pay a merchant. Ledger write succeeds, but external provider callback fails.
+
+**Accounts:**
+
+* `User_wallet`
+* `Merchant_settlement`
+
+**Ledger Entry (Successful):**
+
+| Debit Account | Credit Account      | Amount  | Type    | Reference  |
+| ------------- | ------------------- | ------- | ------- | ---------- |
+| User_wallet   | Merchant_settlement | 5000.00 | payment | pay_tx_009 |
+
+**Downstream Failure:**
+
+* Provider webhook times out
+* Notification not sent
+
+**System Behaviour:**
+
+* Ledger entry is final
+* Async retry handles notification
+* No duplicate charges possible
+
+---
+
+### 4. Duplicate Request (Idempotent Retry)
+
+**Scenario:** Client retries a transfer request due to timeout.
+
+**Input:**
+
+* Same payload
+* Same Idempotency-Key
+
+**Outcome:**
+
+* No new ledger entry created
+* Original transaction returned
+
+```
+Request 1 → Ledger entry created
+Request 2 → Existing entry returned
+```
+
+This guarantees:
+
+* At-most-once financial effects
+* Safe retries under poor network conditions
+
+---
+
 ## Technology Stack
 
 * **Language:** Python 3.x
