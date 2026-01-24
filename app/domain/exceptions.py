@@ -30,6 +30,11 @@ class AccountNotFoundError(SafeLedgerError):
     message = "Account does not exist"
 
 
+class AccountAlreadyExistsError(SafeLedgerError):
+    code = "ACCOUNT_ALREADY_EXISTS"
+    message = "An account with this owner and currency already exists"
+
+
 class AccountInactiveError(SafeLedgerError):
     code = "ACCOUNT_INACTIVE"
     message = "Account is inactive"

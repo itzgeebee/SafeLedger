@@ -94,6 +94,14 @@ async def create_account(
     service = AccountsService(db)
 
     try:
+        if payload.account_type != "USER":
+            from fastapi import HTTPException
+
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only USER accounts can be created via this endpoint.",
+            )
+
         account = await service.create_account(
             owner_id=payload.owner_id,
             currency=payload.currency,

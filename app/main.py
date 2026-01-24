@@ -7,6 +7,7 @@ from app.api.v1.accounts import router as accounts_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.health import router as health_router
 from app.api.v1.transfers import router as transfers_router
+from app.api.v1.webhooks import router as webhooks_router
 from app.config import get_settings
 from app.db.db import engine
 from app.instrumentation import init_instrumentation, instrument_app_and_db
@@ -49,6 +50,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     app.include_router(auth_router, prefix="/api/v1")
     app.include_router(transfers_router, prefix="/api/v1")
+    app.include_router(webhooks_router, prefix="/api/v1")
     app.include_router(accounts_router, prefix="/api/v1")
 
     return app
