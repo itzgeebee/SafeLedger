@@ -8,7 +8,7 @@ from app.api.v1.auth import router as auth_router
 from app.api.v1.health import router as health_router
 from app.api.v1.transfers import router as transfers_router
 from app.config import get_settings
-from app.infrastructure.db import engine
+from app.db.db import engine
 from app.instrumentation import init_instrumentation, instrument_app_and_db
 from app.middleware.request_logging import RequestLoggingMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware

@@ -10,16 +10,25 @@ from app.config import get_settings
 settings = get_settings()
 
 # -------------------------
-# Engine
+# Engine Factory
 # -------------------------
 
-engine: AsyncEngine = create_async_engine(
-    settings.DATABASE_URL,
-    echo=settings.DB_ECHO,
-    pool_pre_ping=True,
-    pool_size=10,
-    max_overflow=20,
-)
+
+def create_db_engine(url: str, echo: bool = False) -> AsyncEngine:
+    return create_async_engine(
+        url,
+        echo=echo,
+        pool_pre_ping=True,
+        pool_size=10,
+        max_overflow=20,
+    )
+
+
+# -------------------------
+# Main Engine
+# -------------------------
+
+engine: AsyncEngine = create_db_engine(settings.DATABASE_URL, settings.DB_ECHO)
 
 # -------------------------
 # Session factory
