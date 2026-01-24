@@ -51,21 +51,24 @@ class IdempotencyRepository:
             return existing, False
 
         # Try to insert; use INSERT ... RETURNING for a single roundtrip.
+        # We use a savepoint (begin_nested) to handle IntegrityError without poisoning
+        # the entire transaction in Postgres.
         try:
-            stmt = (
-                insert(IdempotencyKey)
-                .values(
-                    key=key,
-                    scope=scope,
-                    request_hash=payload_hash,
-                    response_body=response_body,
+            async with self.session.begin_nested():
+                stmt = (
+                    insert(IdempotencyKey)
+                    .values(
+                        key=key,
+                        scope=scope,
+                        request_hash=payload_hash,
+                        response_body=response_body,
+                    )
+                    .returning(IdempotencyKey)
                 )
-                .returning(IdempotencyKey)
-            )
 
-            await self.session.execute(stmt)
-            # flush to ensure DB constraints are evaluated now
-            await self.session.flush()
+                await self.session.execute(stmt)
+                # flush to ensure DB constraints are evaluated now
+                await self.session.flush()
 
             # return the newly created record
             record = await self.get_existing(key=key, scope=scope)
@@ -73,6 +76,7 @@ class IdempotencyRepository:
 
         except IntegrityError:
             # race: another txn inserted the same key. Re-fetch and validate.
+            # The nested transaction was automatically rolled back by the context manager.
             existing = await self.get_existing(key=key, scope=scope)
             if not existing:
                 # Something unexpected; surface conflict
