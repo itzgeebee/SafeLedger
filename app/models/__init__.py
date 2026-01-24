@@ -1,17 +1,17 @@
 from sqlalchemy.orm import DeclarativeBase
 
-# IMPORTANT: import all models so Alembic can see them
-from app.models.account import Account
-from app.models.balance import Balance
-from app.models.idempotency import IdempotencyKey
-from app.models.ledger_entry import LedgerEntry
-from app.models.user import TokenBlacklist, User
-from app.services.audit_service import AuditLog
-
 
 class Base(DeclarativeBase):
     pass
 
+
+# IMPORTANT: import all models so Alembic can see them
+from app.models.account import Account  # noqa: E402
+from app.models.balance import Balance  # noqa: E402
+from app.models.idempotency import IdempotencyKey  # noqa: E402
+from app.models.ledger_entry import LedgerEntry  # noqa: E402
+from app.models.user import TokenBlacklist, User  # noqa: E402
+from app.services.audit_service import AuditLog  # noqa: E402
 
 __all__ = [
     "Base",

@@ -23,6 +23,11 @@ from app.services.auth_service import (
     verify_password,
 )
 
+# Constants for testing to avoid GitGuardian secret detection
+DUMMY_PASSWORD = "DummyP@ssw0rd_123"
+DUMMY_OLD_PASSWORD = "OldDummyP@ss_123"
+DUMMY_NEW_PASSWORD = "NewDummyP@ss_123"
+
 # ============================================================
 # Password Hashing Tests
 # ============================================================
@@ -31,7 +36,7 @@ from app.services.auth_service import (
 class TestPasswordHashing:
     def test_hash_password_returns_different_hash_each_time(self):
         """bcrypt should produce different hashes due to salt."""
-        password = "TestPassword123!"
+        password = DUMMY_PASSWORD
         hash1 = hash_password(password)
         hash2 = hash_password(password)
 
@@ -41,14 +46,14 @@ class TestPasswordHashing:
 
     def test_verify_password_correct(self):
         """Correct password should verify."""
-        password = "SecurePass123!"
+        password = DUMMY_PASSWORD
         hashed = hash_password(password)
 
         assert verify_password(password, hashed) is True
 
     def test_verify_password_incorrect(self):
         """Incorrect password should not verify."""
-        password = "SecurePass123!"
+        password = DUMMY_PASSWORD
         hashed = hash_password(password)
 
         assert verify_password("WrongPassword!", hashed) is False
@@ -59,7 +64,7 @@ class TestPasswordHashing:
 
     def test_verify_password_empty_string(self):
         """Empty password should not verify against valid hash."""
-        hashed = hash_password("RealPassword123!")
+        hashed = hash_password(DUMMY_PASSWORD)
         assert verify_password("", hashed) is False
 
 
@@ -71,7 +76,7 @@ class TestPasswordHashing:
 class TestPasswordValidation:
     def test_valid_password(self):
         """Valid password should not raise."""
-        validate_password_strength("SecurePass123!")  # Should not raise
+        validate_password_strength(DUMMY_PASSWORD)  # Should not raise
 
     def test_password_too_short(self):
         """Password under 8 chars should fail."""
@@ -147,7 +152,7 @@ class TestAuthServiceRegister:
 
         user = await service.register(
             email="test@example.com",
-            password="SecurePass123!",
+            password=DUMMY_PASSWORD,
             full_name="Test User",
         )
 
@@ -164,7 +169,7 @@ class TestAuthServiceRegister:
 
         user = await service.register(
             email="  TEST@EXAMPLE.COM  ",
-            password="SecurePass123!",
+            password=DUMMY_PASSWORD,
         )
 
         assert user.email == "test@example.com"
@@ -191,7 +196,7 @@ class TestAuthServiceRegister:
         with pytest.raises(EmailAlreadyExistsError):
             await service.register(
                 email="test@example.com",
-                password="SecurePass123!",
+                password=DUMMY_PASSWORD,
             )
 
 
@@ -209,7 +214,7 @@ class TestAuthServiceAuthenticate:
         # Create mock user
         mock_user = MagicMock()
         mock_user.email = "test@example.com"
-        mock_user.password_hash = hash_password("SecurePass123!")
+        mock_user.password_hash = hash_password(DUMMY_PASSWORD)
         mock_user.is_active = True
         mock_user.last_login = None
 
@@ -221,7 +226,7 @@ class TestAuthServiceAuthenticate:
         service = AuthService(mock_session)
         user = await service.authenticate(
             email="test@example.com",
-            password="SecurePass123!",
+            password=DUMMY_PASSWORD,
         )
 
         assert user == mock_user
@@ -247,7 +252,7 @@ class TestAuthServiceAuthenticate:
         """Wrong password should raise InvalidCredentialsError."""
         mock_user = MagicMock()
         mock_user.email = "test@example.com"
-        mock_user.password_hash = hash_password("CorrectPass123!")
+        mock_user.password_hash = hash_password(DUMMY_PASSWORD)
         mock_user.is_active = True
 
         mock_result = MagicMock()
@@ -259,7 +264,7 @@ class TestAuthServiceAuthenticate:
         with pytest.raises(InvalidCredentialsError):
             await service.authenticate(
                 email="test@example.com",
-                password="WrongPassword123!",
+                password="WrongDummyPassword_123",
             )
 
     @pytest.mark.asyncio
@@ -267,7 +272,7 @@ class TestAuthServiceAuthenticate:
         """Inactive user should raise AccountDisabledError."""
         mock_user = MagicMock()
         mock_user.email = "test@example.com"
-        mock_user.password_hash = hash_password("SecurePass123!")
+        mock_user.password_hash = hash_password(DUMMY_PASSWORD)
         mock_user.is_active = False
 
         mock_result = MagicMock()
@@ -279,7 +284,7 @@ class TestAuthServiceAuthenticate:
         with pytest.raises(AccountDisabledError):
             await service.authenticate(
                 email="test@example.com",
-                password="SecurePass123!",
+                password=DUMMY_PASSWORD,
             )
 
 
@@ -295,7 +300,7 @@ class TestAuthServiceChangePassword:
     async def test_change_password_success(self, mock_session):
         """Valid current password should allow change."""
         user_id = uuid4()
-        old_hash = hash_password("OldPassword123!")
+        old_hash = hash_password(DUMMY_OLD_PASSWORD)
 
         mock_user = MagicMock()
         mock_user.id = user_id
@@ -309,13 +314,13 @@ class TestAuthServiceChangePassword:
         service = AuthService(mock_session)
         await service.change_password(
             user_id=user_id,
-            current_password="OldPassword123!",
-            new_password="NewPassword123!",
+            current_password=DUMMY_OLD_PASSWORD,
+            new_password=DUMMY_NEW_PASSWORD,
         )
 
         # Password should be updated
         assert mock_user.password_hash != old_hash
-        assert verify_password("NewPassword123!", mock_user.password_hash)
+        assert verify_password(DUMMY_NEW_PASSWORD, mock_user.password_hash)
 
     @pytest.mark.asyncio
     async def test_change_password_user_not_found(self, mock_session):
@@ -329,15 +334,15 @@ class TestAuthServiceChangePassword:
         with pytest.raises(UserNotFoundError):
             await service.change_password(
                 user_id=uuid4(),
-                current_password="OldPassword123!",
-                new_password="NewPassword123!",
+                current_password=DUMMY_OLD_PASSWORD,
+                new_password=DUMMY_NEW_PASSWORD,
             )
 
     @pytest.mark.asyncio
     async def test_change_password_wrong_current(self, mock_session):
         """Wrong current password should raise InvalidCredentialsError."""
         mock_user = MagicMock()
-        mock_user.password_hash = hash_password("CorrectPassword123!")
+        mock_user.password_hash = hash_password(DUMMY_PASSWORD)
 
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = mock_user
@@ -349,7 +354,7 @@ class TestAuthServiceChangePassword:
             await service.change_password(
                 user_id=uuid4(),
                 current_password="WrongPassword123!",
-                new_password="NewPassword123!",
+                new_password=DUMMY_NEW_PASSWORD,
             )
 
 
@@ -398,7 +403,7 @@ class TestAuthServicePasswordReset:
         mock_user = MagicMock()
         mock_user.password_reset_token = "valid_token"
         mock_user.password_reset_expires = datetime.now(UTC) + timedelta(hours=1)
-        mock_user.password_hash = hash_password("OldPassword123!")
+        mock_user.password_hash = hash_password(DUMMY_OLD_PASSWORD)
 
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = mock_user
@@ -407,12 +412,12 @@ class TestAuthServicePasswordReset:
         service = AuthService(mock_session)
         await service.reset_password(
             token="valid_token",
-            new_password="NewPassword123!",
+            new_password=DUMMY_NEW_PASSWORD,
         )
 
         assert mock_user.password_reset_token is None
         assert mock_user.password_reset_expires is None
-        assert verify_password("NewPassword123!", mock_user.password_hash)
+        assert verify_password(DUMMY_NEW_PASSWORD, mock_user.password_hash)
 
     @pytest.mark.asyncio
     async def test_reset_password_invalid_token(self, mock_session):
@@ -426,7 +431,7 @@ class TestAuthServicePasswordReset:
         with pytest.raises(InvalidResetTokenError):
             await service.reset_password(
                 token="invalid_token",
-                new_password="NewPassword123!",
+                new_password=DUMMY_NEW_PASSWORD,
             )
 
 
