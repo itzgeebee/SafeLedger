@@ -25,6 +25,7 @@ class AccountsRepository:
             id=account.id,
             currency=account.currency,
             is_active=account.is_active,
+            account_type=account.account_type,
         )
 
     async def get_system_account(self, currency: str) -> LedgerAccount:
@@ -44,6 +45,7 @@ class AccountsRepository:
             id=account.id,
             currency=account.currency,
             is_active=account.is_active,
+            account_type=account.account_type,
         )
 
     async def get_settlement_account(self, currency: str) -> LedgerAccount:
@@ -63,6 +65,7 @@ class AccountsRepository:
             id=account.id,
             currency=account.currency,
             is_active=account.is_active,
+            account_type=account.account_type,
         )
 
     async def get_accounts_for_update(self, account_ids: list[UUID]) -> dict:
@@ -84,7 +87,12 @@ class AccountsRepository:
         rows = result.scalars().all()
 
         mapped = {
-            r.id: LedgerAccount(id=r.id, currency=r.currency, is_active=r.is_active)
+            r.id: LedgerAccount(
+                id=r.id,
+                currency=r.currency,
+                is_active=r.is_active,
+                account_type=r.account_type,
+            )
             for r in rows
         }
 

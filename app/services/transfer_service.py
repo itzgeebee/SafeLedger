@@ -117,6 +117,7 @@ class TransferService:
                 account_id=source.id,
                 currency=payload.currency,
                 required_amount=total_debit,
+                account_type=source.account_type,
             )
             # Reserve idempotency key before persisting ledger entries to
             # prevent duplicate writes from concurrent transactions.
