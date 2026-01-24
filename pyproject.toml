@@ -1,0 +1,100 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "safeLedger"
+version = "0.1.0"
+description = "A secure, double-entry ledger system built with FastAPI for fintech applications."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+
+authors = [
+  { name = "Gideon Balogun", email = "balogungideon12@gmail.com" }
+]
+
+keywords = [
+  "fintech",
+  "ledger",
+  "double-entry",
+  "payments",
+  "fastapi",
+  "banking"
+]
+
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Framework :: FastAPI",
+  "Topic :: Software Development :: Financial",
+]
+
+dependencies = [
+  "fastapi>=0.110.0",
+  "uvicorn[standard]>=0.29.0",
+  "sqlalchemy>=2.0.25",
+  "alembic>=1.13.1",
+  "psycopg2-binary>=2.9.9",
+  "asyncpg>=0.29.0",
+  "aiosqlite>=0.19.0",
+  "pydantic[email]>=2.6.0",
+  "email-validator>=2.1.0",
+  "python-dotenv>=1.0.1",
+  "python-jose[cryptography]>=3.3.0",
+  "bcrypt>=4.1.0",
+  "prometheus-client>=0.19.0",
+  "opentelemetry-api>=1.23.0",
+  "opentelemetry-sdk>=1.23.0",
+  "opentelemetry-exporter-otlp>=1.23.0",
+]
+
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0.0",
+  "pytest-asyncio>=0.23.0",
+  "hypothesis>=6.98.0",
+  "httpx>=0.26.0",
+
+  "black>=24.1.0",
+  "ruff>=0.2.0",
+  "mypy>=1.8.0",
+  "pre-commit>=3.6.0",
+  "bandit>=1.7.0",
+]
+
+
+[tool.setuptools]
+packages = ["app"]
+
+
+[tool.pytest.ini_options]
+testpaths = ["app/tests"]
+addopts = "-v"
+asyncio_mode = "auto"
+asyncio_default_test_loop_scope = "session"
+asyncio_default_fixture_loop_scope = "session"
+
+
+[tool.black]
+line-length = 88
+target-version = ["py311"]
+
+
+[tool.ruff]
+line-length = 88
+select = ["E", "F", "I"]
+ignore = ["E501"]
+
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true
+
+
+[tool.alembic]
+script_location = "alembic"
+sqlalchemy.url = "postgresql+psycopg2://localhost/safeledger"

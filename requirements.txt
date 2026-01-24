@@ -1,0 +1,19 @@
+fastapi>=0.95.0
+uvicorn[standard]>=0.22.0
+SQLAlchemy[asyncio]>=2.0
+asyncpg>=0.27
+pytest>=7.0
+pytest-asyncio>=0.21
+aiosqlite>=0.19
+prometheus-client>=0.15.0
+opentelemetry-sdk>=1.23.0
+opentelemetry-exporter-otlp>=1.23.0
+# Optional OpenTelemetry instrumentation packages (install separately if needed)
+# pip install opentelemetry-instrumentation-fastapi opentelemetry-instrumentation-sqlalchemy
+fastapi>=0.95
+uvicorn[standard]>=0.22
+sqlalchemy>=2.0
+asyncpg>=0.27
+pytest>=7.0
+pytest-asyncio>=0.21
+aiosqlite>=0.18
