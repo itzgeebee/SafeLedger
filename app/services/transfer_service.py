@@ -36,9 +36,7 @@ class TransferService:
         is_external: bool = False,
     ) -> TransferResponse:
 
-        payload_dict = payload.model_dump(
-            exclude_unset=True,
-        )
+        payload_dict = payload.model_dump()
 
         # -----------------------------
         # Idempotency check - use string representation for amounts
