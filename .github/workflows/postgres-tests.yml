@@ -1,0 +1,20 @@
+name: CI - Postgres tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Make CI script executable
+        run: chmod +x ci/run_postgres_tests.sh
+
+      - name: Run CI helper script
+        env:
+          # The helper script will start Postgres via docker compose and run pytest
+          DATABASE_URL: postgresql+asyncpg://safeledger:safeledger@localhost:5432/safeledger_test
+        run: ./ci/run_postgres_tests.sh
