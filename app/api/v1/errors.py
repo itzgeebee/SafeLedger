@@ -3,6 +3,7 @@ import logging
 from fastapi import HTTPException, status
 
 from app.domain.exceptions import (
+    AccountAlreadyExistsError,
     AccountNotFoundError,
     DuplicateTransactionError,
     IdempotencyKeyConflictError,
@@ -72,6 +73,8 @@ def map_account_exception(exc: Exception) -> HTTPException:
     """Map account exceptions to appropriate HTTP responses."""
     if isinstance(exc, AccountNotFoundError):
         return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message)
+    if isinstance(exc, AccountAlreadyExistsError):
+        return HTTPException(status_code=status.HTTP_409_CONFLICT, detail=exc.message)
     if isinstance(exc, InvalidAccountError):
         return HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=exc.message

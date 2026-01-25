@@ -64,7 +64,15 @@ class BalanceService:
         account_id: UUID,
         currency: str,
         required_amount: Decimal,
+        account_type: str = "USER",
     ) -> None:
+        """
+        Verify that an account has enough funds for a debit.
+        Infrastructure accounts (SYSTEM/SETTLEMENT) are allowed to go negative.
+        """
+        if account_type != "USER":
+            return
+
         balance = await self.get_balance(account_id, currency)
 
         if balance < required_amount:

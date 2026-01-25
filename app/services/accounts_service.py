@@ -10,6 +10,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.exceptions import (
+    AccountAlreadyExistsError,
     AccountNotFoundError,
     InvalidAccountError,
 )
@@ -107,8 +108,15 @@ class AccountsService:
             account_type=acc_type,
         )
 
-        self.session.add(account)
-        await self.session.flush()
+        from sqlalchemy.exc import IntegrityError
+
+        try:
+            self.session.add(account)
+            await self.session.flush()
+        except IntegrityError:
+            raise AccountAlreadyExistsError(
+                f"Account for owner {owner_id} with currency {currency} already exists"
+            )
 
         logger.info(
             f"Account created: {account.id} (type={account_type}, currency={currency})"

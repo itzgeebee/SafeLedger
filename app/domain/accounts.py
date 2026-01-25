@@ -5,6 +5,7 @@ from app.domain.exceptions import (
     AccountInactiveError,
     CurrencyMismatchError,
 )
+from app.models.account import AccountType
 
 
 @dataclass(frozen=True)
@@ -12,6 +13,7 @@ class LedgerAccount:
     id: UUID
     currency: str
     is_active: bool
+    account_type: AccountType = AccountType.USER
 
     def ensure_active(self) -> None:
         if not self.is_active:

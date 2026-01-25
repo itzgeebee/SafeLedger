@@ -24,12 +24,16 @@ class TestReversalServiceExecute:
     @pytest.fixture
     def mock_session_internal(self):
         session = AsyncMock()
+        session.in_transaction.return_value = False
+        session.is_active = True
         # session.begin is a regular method returning an async context manager
         session.begin = MagicMock()
+        session.begin_nested = MagicMock()
         mock_cm = MagicMock()
         mock_cm.__aenter__ = AsyncMock()
         mock_cm.__aexit__ = AsyncMock(return_value=False)
         session.begin.return_value = mock_cm
+        session.begin_nested.return_value = mock_cm
         return session
 
     @pytest.fixture
@@ -82,6 +86,11 @@ class TestReversalServiceExecute:
         service.idempotency_repo.get_existing.return_value = None
 
         service.accounts_repo = AsyncMock()
+        mock_accounts = {
+            entry.account_id: MagicMock(id=entry.account_id, account_type="USER")
+            for entry in mock_original_transaction.entries
+        }
+        service.accounts_repo.get_accounts_for_update.return_value = mock_accounts
         service.balance_service = AsyncMock()
         service.ledger_repo = AsyncMock()
 
@@ -169,6 +178,10 @@ class TestReversalServiceExecute:
         service.idempotency_repo = AsyncMock()
         service.idempotency_repo.get_existing.return_value = None
         service.accounts_repo = AsyncMock()
+        service.accounts_repo.get_accounts_for_update.return_value = {
+            entry.account_id: MagicMock(id=entry.account_id, account_type="USER")
+            for entry in mock_original_transaction.entries
+        }
         service.balance_service = AsyncMock()
 
         with pytest.raises(DuplicateTransactionError):

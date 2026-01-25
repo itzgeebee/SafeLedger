@@ -74,7 +74,8 @@ async def db_session(db_engine) -> AsyncGenerator[AsyncSession, None]:
 async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     """
     Async HTTP client for testing API endpoints.
-    Overwrites the get_db dependency to use the test session.
+    Automatically overrides:
+    - get_db: to use the test session
     """
     app = create_app()
 
@@ -83,10 +84,18 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
 
     app.dependency_overrides[get_db] = override_get_db
 
-    # Use ASGITransport for testing
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as ac:
         yield ac
 
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def auth_headers():
+    """Returns headers with a dummy JWT token to pass auth middleware."""
+    return {"Authorization": "Bearer dummy_token"}
+
+
+# I'll just update the client fixture in conftest.py to make it easier to override.
