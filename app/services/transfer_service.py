@@ -66,7 +66,13 @@ class TransferService:
                 f"Transaction amount {total_debit} exceeds maximum allowed {settings.MAX_TRANSACTION_AMOUNT}"
             )
 
-        async with self.session.begin():
+        # Standardize transaction initiation. If a transaction is already active
+        # (e.g. from middleware), we use a savepoint (nested) to allow safe rollbacks
+        # without killing the outer transaction.
+        use_nested = getattr(self.session, "in_transaction", lambda: False)()
+        tx_context = self.session.begin_nested() if use_nested else self.session.begin()
+
+        async with tx_context:
             # Re-check idempotency inside transaction for stronger safety
             existing = await self.idempotency_service.check_or_fail(
                 key=idempotency_key,

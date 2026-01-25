@@ -20,12 +20,16 @@ class TestTransferServiceExecute:
     @pytest.fixture
     def mock_session(self):
         session = AsyncMock()
-        # Mocking context manager for session.begin()
+        session.in_transaction.return_value = False
+        session.is_active = True
+        # Mocking context manager for session.begin() and begin_nested()
         session.begin = MagicMock()
+        session.begin_nested = MagicMock()
         mock_cm = MagicMock()
         mock_cm.__aenter__ = AsyncMock()
         mock_cm.__aexit__ = AsyncMock(return_value=False)
         session.begin.return_value = mock_cm
+        session.begin_nested.return_value = mock_cm
         return session
 
     @pytest.fixture
@@ -52,15 +56,19 @@ class TestTransferServiceExecute:
         )
 
         service.accounts_repo = AsyncMock()
-        mock_source = MagicMock(id=mock_payload.source_account_id, currency="NGN")
-        mock_dest = MagicMock(id=mock_payload.destination_account_id, currency="NGN")
+        mock_source = MagicMock(
+            id=mock_payload.source_account_id, currency="NGN", account_type="USER"
+        )
+        mock_dest = MagicMock(
+            id=mock_payload.destination_account_id, currency="NGN", account_type="USER"
+        )
         service.accounts_repo.get_accounts_for_update.return_value = {
             mock_payload.source_account_id: mock_source,
             mock_payload.destination_account_id: mock_dest,
         }
 
         # System account for fees
-        mock_fee_acc = MagicMock(id=uuid4(), currency="NGN")
+        mock_fee_acc = MagicMock(id=uuid4(), currency="NGN", account_type="SYSTEM")
         service.accounts_repo.get_system_account.return_value = mock_fee_acc
         service.accounts_repo.get_accounts_for_update.return_value[mock_fee_acc.id] = (
             mock_fee_acc
@@ -92,10 +100,14 @@ class TestTransferServiceExecute:
         )
 
         service.accounts_repo = AsyncMock()
-        mock_settlement = MagicMock(id=uuid4(), currency="NGN")
+        mock_settlement = MagicMock(
+            id=uuid4(), currency="NGN", account_type="SETTLEMENT"
+        )
         service.accounts_repo.get_settlement_account.return_value = mock_settlement
 
-        mock_source = MagicMock(id=mock_payload.source_account_id, currency="NGN")
+        mock_source = MagicMock(
+            id=mock_payload.source_account_id, currency="NGN", account_type="USER"
+        )
         service.accounts_repo.get_accounts_for_update.return_value = {
             mock_payload.source_account_id: mock_source,
             mock_settlement.id: mock_settlement,
@@ -165,10 +177,12 @@ class TestTransferServiceExecute:
         service.accounts_repo = AsyncMock()
         service.accounts_repo.get_accounts_for_update.return_value = {
             mock_payload.source_account_id: MagicMock(
-                id=mock_payload.source_account_id, currency="NGN"
+                id=mock_payload.source_account_id, currency="NGN", account_type="USER"
             ),
             mock_payload.destination_account_id: MagicMock(
-                id=mock_payload.destination_account_id, currency="NGN"
+                id=mock_payload.destination_account_id,
+                currency="NGN",
+                account_type="USER",
             ),
         }
 

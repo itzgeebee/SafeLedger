@@ -41,7 +41,11 @@ class ReversalService:
         # to ensure ACID properties for reversals.
         # -----------------------------
 
-        async with self.session.begin():
+        # Standardize transaction initiation.
+        use_nested = getattr(self.session, "in_transaction", lambda: False)()
+        tx_context = self.session.begin_nested() if use_nested else self.session.begin()
+
+        async with tx_context:
             # Check idempotency inside transaction for safety
             existing = await self.idempotency_service.check_or_fail(
                 key=idempotency_key,

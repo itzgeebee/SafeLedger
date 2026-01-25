@@ -55,6 +55,7 @@ async def create_p2p_transfer(
             request_id=get_request_id(request),
         )
 
+        await db.commit()
         return response
     except Exception as e:
         await db.rollback()
@@ -95,6 +96,7 @@ async def create_external_transfer(
             request_id=get_request_id(request),
         )
 
+        await db.commit()
         return response
     except Exception as e:
         await db.rollback()
@@ -131,6 +133,7 @@ async def reverse_transfer(
             request_id=get_request_id(request),
         )
 
+        await db.commit()
         return response
     except Exception as e:
         await db.rollback()
