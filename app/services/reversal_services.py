@@ -78,15 +78,19 @@ class ReversalService:
             account_ids = sorted(account_ids, key=lambda x: str(x))
 
             # Lock accounts to prevent concurrent modifications
-            await self.accounts_repo.get_accounts_for_update(account_ids)
+            locked_accounts = await self.accounts_repo.get_accounts_for_update(
+                account_ids
+            )
 
             # Validate that the account being debited has sufficient funds
             for entry in reversal_tx.entries:
                 if entry.entry_type == EntryType.DEBIT:
+                    acc = locked_accounts.get(entry.account_id)
                     await self.balance_service.ensure_sufficient_funds(
                         account_id=entry.account_id,
                         currency=entry.currency,
                         required_amount=entry.amount,
+                        account_type=acc.account_type if acc else "USER",
                     )
 
             # Reserve idempotency key before persisting
